@@ -34,16 +34,7 @@
         const uploadButton = document.getElementById('uploadButton');
         const fileLinks = document.getElementById('fileLinks');
 
-        const uploadedFiles = [];
-
-        uploadButton.addEventListener('click', () => {
-            const file = fileInput.files[0];
-            if (file) {
-                const fileURL = URL.createObjectURL(file);
-                uploadedFiles.push({ name: file.name, url: fileURL });
-                updateFileList();
-            }
-        });
+        let uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
 
         function updateFileList() {
             fileLinks.innerHTML = '';
@@ -55,9 +46,42 @@
                 link.className = 'text-blue-500 hover:underline';
                 link.download = file.name;
                 listItem.appendChild(link);
+
+                const shareLink = document.createElement('button');
+                shareLink.textContent = 'Share';
+                shareLink.className = 'ml-2 text-sm text-white bg-green-500 px-2 py-1 rounded hover:bg-green-600';
+                shareLink.addEventListener('click', () => {
+                    const shareURL = `${window.location.origin}${window.location.pathname}?file=${encodeURIComponent(file.url)}`;
+                    navigator.clipboard.writeText(shareURL).then(() => {
+                        alert('Link copied to clipboard!');
+                    });
+                });
+                listItem.appendChild(shareLink);
+
                 fileLinks.appendChild(listItem);
             });
         }
+
+        uploadButton.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                uploadedFiles.push({ name: file.name, url: fileURL });
+                localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+                updateFileList();
+            }
+        });
+
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileURL = urlParams.get('file');
+            if (fileURL) {
+                const fileName = fileURL.split('/').pop();
+                uploadedFiles.push({ name: fileName, url: fileURL });
+                localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+            }
+            updateFileList();
+        });
     </script>
 </body>
 </html>
