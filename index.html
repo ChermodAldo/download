@@ -2,110 +2,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload and Download App</title>
+    <title>File Sharing App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Roboto', sans-serif;
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center">
-    <div class="container mx-auto p-4">
-        <div class="bg-white shadow-md rounded-lg p-6">
-            <h1 class="text-2xl font-bold mb-4">File Upload and Download</h1>
-            <div class="mb-4">
-                <input type="file" id="fileInput" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-            </div>
-            <button id="uploadButton" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Upload File</button>
-            <div id="fileList" class="mt-6">
-                <h2 class="text-xl font-semibold mb-2">Uploaded Files</h2>
-                <ul id="fileLinks" class="list-disc pl-5">
-                    <!-- File links will be appended here -->
-                </ul>
-            </div>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4 bg-white shadow-lg mt-10">
+        <h1 class="text-2xl font-bold text-center mb-4">File Sharing App</h1>
+        <div class="upload-section text-center mb-4">
+            <input type="file" id="fileInput" class="hidden">
+            <label for="fileInput" class="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer">
+                <i class="fas fa-upload"></i> Upload File
+            </label>
         </div>
+        <ul class="file-list list-none p-0" id="fileList">
+            <!-- File items will be appended here -->
+        </ul>
     </div>
 
     <script>
         const fileInput = document.getElementById('fileInput');
-        const uploadButton = document.getElementById('uploadButton');
-        const fileLinks = document.getElementById('fileLinks');
+        const fileList = document.getElementById('fileList');
 
-        let uploadedFiles = JSON.parse(localStorage.getItem('uploadedFiles')) || [];
+        document.addEventListener('DOMContentLoaded', loadFilesFromLocalStorage);
+        fileInput.addEventListener('change', handleFileUpload);
 
-        function updateFileList() {
-            fileLinks.innerHTML = '';
-            uploadedFiles.forEach((file, index) => {
-                const listItem = document.createElement('li');
-                const link = document.createElement('a');
-                link.href = file.url;
-                link.textContent = file.name;
-                link.className = 'text-blue-500 hover:underline';
-                link.download = file.name;
-                listItem.appendChild(link);
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileUrl = URL.createObjectURL(file);
+                addFileToList(file.name, fileUrl);
+                saveFileToLocalStorage(file.name, fileUrl);
+            }
+        }
 
-                const shareLink = document.createElement('button');
-                shareLink.textContent = 'Share';
-                shareLink.className = 'ml-2 text-sm text-white bg-green-500 px-2 py-1 rounded hover:bg-green-600';
-                shareLink.addEventListener('click', () => {
-                    const shareURL = `${window.location.origin}${window.location.pathname}?file=${encodeURIComponent(file.url)}`;
-                    navigator.clipboard.writeText(shareURL).then(() => {
-                        alert('Link copied to clipboard!');
-                    });
-                });
-                listItem.appendChild(shareLink);
+        function addFileToList(fileName, fileUrl) {
+            const listItem = document.createElement('li');
+            listItem.className = "flex justify-between items-center p-2 border-b border-gray-200";
+            listItem.innerHTML = `
+                <span class="file-name">${fileName}</span>
+                <div class="file-actions flex gap-2">
+                    <a href="${fileUrl}" download="${fileName}" class="text-blue-500">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    <button class="delete text-red-500" onclick="deleteFile(this, '${fileName}')">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `;
+            fileList.appendChild(listItem);
+        }
 
-                const deleteButton = document.createElement('button');
-                deleteButton.textContent = 'Delete';
-                deleteButton.className = 'ml-2 text-sm text-white bg-red-500 px-2 py-1 rounded hover:bg-red-600';
-                deleteButton.addEventListener('click', () => {
-                    uploadedFiles.splice(index, 1);
-                    localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
-                    updateFileList();
-                });
-                listItem.appendChild(deleteButton);
+        function saveFileToLocalStorage(fileName, fileUrl) {
+            let files = JSON.parse(localStorage.getItem('files')) || [];
+            files.push({ name: fileName, url: fileUrl });
+            localStorage.setItem('files', JSON.stringify(files));
+        }
 
-                fileLinks.appendChild(listItem);
+        function loadFilesFromLocalStorage() {
+            let files = JSON.parse(localStorage.getItem('files')) || [];
+            files.forEach(file => {
+                addFileToList(file.name, file.url);
             });
         }
 
-        uploadButton.addEventListener('click', async () => {
-            const file = fileInput.files[0];
-            if (file) {
-                const formData = new FormData();
-                formData.append('file', file);
+        function deleteFile(button, fileName) {
+            const listItem = button.closest('li');
+            fileList.removeChild(listItem);
+            removeFileFromLocalStorage(fileName);
+        }
 
-                // Mock backend upload
-                const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                const fileURL = URL.createObjectURL(file); // Replace with actual URL from backend
-                uploadedFiles.push({ name: file.name, url: fileURL });
-                localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
-                updateFileList();
-            }
-        });
-
-        window.addEventListener('load', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const fileURL = urlParams.get('file');
-            if (fileURL) {
-                const fileName = fileURL.split('/').pop();
-                const link = document.createElement('a');
-                link.href = fileURL;
-                link.download = fileName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-            updateFileList();
-        });
+        function removeFileFromLocalStorage(fileName) {
+            let files = JSON.parse(localStorage.getItem('files')) || [];
+            files = files.filter(file => file.name !== fileName);
+            localStorage.setItem('files', JSON.stringify(files));
+        }
     </script>
 </body>
 </html>
