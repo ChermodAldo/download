@@ -37,9 +37,20 @@
             const files = event.target.files;
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                const fileUrl = URL.createObjectURL(file);
-                addFileToList(file.name, fileUrl);
-                saveFileToLocalStorage(file.name, fileUrl);
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('YOUR_BACKEND_UPLOAD_ENDPOINT', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const fileUrl = data.fileUrl; // URL returned by the backend
+                    addFileToList(file.name, fileUrl);
+                    saveFileToLocalStorage(file.name, fileUrl);
+                })
+                .catch(error => console.error('Error uploading file:', error));
             }
         }
 
@@ -54,6 +65,9 @@
                     </a>
                     <button class="delete text-red-500" onclick="deleteFile(this, '${fileName}')">
                         <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <button class="share text-green-500" onclick="shareFile('${fileUrl}')">
+                        <i class="fas fa-share-alt"></i>
                     </button>
                 </div>
             `;
@@ -83,6 +97,11 @@
             let files = JSON.parse(localStorage.getItem('files')) || [];
             files = files.filter(file => file.name !== fileName);
             localStorage.setItem('files', JSON.stringify(files));
+        }
+
+        function shareFile(fileUrl) {
+            const shareLink = `${window.location.origin}/download?file=${encodeURIComponent(fileUrl)}`;
+            prompt('Copy this link to share the file:', shareLink);
         }
     </script>
 </body>
